@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulador de Tempos de Algoritmo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 900px;
+            margin: auto;
+        }
+        textarea {
+            width: 100%;
+            height: 260px;
+        }
+        button {
+            margin-top: 10px;
+            margin-right: 6px;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+        }
+        input, select {
+            margin-left: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Simulador de Tempos de Algoritmo (ms)</h1>
+
+    <p><strong>Configurações:</strong></p>
+
+    <label>
+        Tamanho da população:
+        <input type="number" id="populacao" value="1000000">
+    </label>
+
+    <label>
+        Margem de erro (%):
+        <input type="number" id="erro" value="4">
+    </label>
+
+    <label>
+        Nível de confiança:
+        <select id="confianca">
+            <option value="1.96" selected>95%</option>
+            <option value="2.58">99%</option>
+        </select>
+    </label>
+
+    <label>
+        Proporção estimada (p):
+        <input type="number" id="proporcao" value="50">
+    </label>
+
+    <hr>
+
+    <label>
+        Média:
+        <input type="number" id="media" value="500">
+    </label>
+
+    <label>
+        Desvio padrão:
+        <input type="number" id="desvio" value="50">
+    </label>
+
+    <label>
+        Quantidade de casas decimais:
+        <input type="number" id="decimais" value="2" min="0">
+    </label>
+
+    <label>
+        Tamanho da amostra:
+        <input type="number" id="amostra" value="100" min="1">
+    </label><br>
+
+    <button onclick="calcularAmostra()">Sugerir tamanho da amostra</button>
+    <button onclick="gerarTempos()">Gerar Tempos</button>
+    <button onclick="copiar()">Copiar</button>
+    <button onclick="baixar()">Baixar CSV</button>
+
+    <h3>Resultado:</h3>
+    <textarea id="resultado" readonly></textarea>
+
+    <script>
+        function calcularAmostra() {
+            const N = parseInt(document.getElementById('populacao').value);
+            const z = parseFloat(document.getElementById('confianca').value);
+            const e = parseFloat(document.getElementById('erro').value) / 100;
+            const p = parseFloat(document.getElementById('proporcao').value) / 100;
+
+            if (N <= 0 || e <= 0 || p <= 0 || p >= 1) {
+                alert('Verifique os valores para cálculo da amostra.');
+                return;
+            }
+
+            const n0 = (Math.pow(z, 2) * p * (1 - p)) / Math.pow(e, 2);
+            const n = n0 / (1 + (n0 - 1) / N);
+            const nFinal = Math.ceil(n);
+
+            document.getElementById('amostra').value = nFinal;
+        }
+
+        function randomNormal(media, desvioPadrao) {
+            let u = 0, v = 0;
+            while (u === 0) u = Math.random();
+            while (v === 0) v = Math.random();
+            return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v) * desvioPadrao + media;
+        }
+
+        function gerarTempos() {
+            const media = parseFloat(document.getElementById('media').value);
+            const desvio = parseFloat(document.getElementById('desvio').value);
+            const amostra = parseInt(document.getElementById('amostra').value);
+            const decimais = parseInt(document.getElementById('decimais').value);
+
+            if (!amostra || amostra <= 0) {
+                alert('Informe um tamanho de amostra válido.');
+                return;
+            }
+
+            let tempos = [];
+            const fator = Math.pow(10, decimais);
+
+            for (let i = 0; i < amostra; i++) {
+                let tempo = randomNormal(media, desvio);
+                tempo = Math.max(tempo, 0);
+                tempo = Math.round(tempo * fator) / fator;
+                tempos.push(tempo.toFixed(decimais).replace('.', ','));
+            }
+
+            document.getElementById('resultado').value = tempos.join(", ");
+        }
+
+        function copiar() {
+            const texto = document.getElementById('resultado');
+            texto.select();
+            texto.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+            alert('Copiado para a área de transferência!');
+        }
+
+        function baixar() {
+            const dados = document.getElementById('resultado').value;
+            if (!dados) {
+                alert('Gere os tempos antes de baixar.');
+                return;
+            }
+
+            const linhas = "Tempo (ms)\n" + dados.split(", ").join("\n");
+            const blob = new Blob([linhas], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'tempos.csv';
+            a.click();
+
+            URL.revokeObjectURL(url);
+        }
+    </script>
+
+</body>
+</html>
